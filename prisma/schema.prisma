@@ -1,0 +1,151 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// ============ USER ============
+model User {
+  id         Int          @id @default(autoincrement())
+  nama       String
+  email      String       @unique
+  password   String
+  no_hp      String
+  role       Role         @default(USER)
+  createdAt  DateTime     @default(now())
+  reservasis Reservasi[]
+  member     Member?
+
+  @@map("users")
+}
+
+// ============ LAPANGAN ============
+model Lapangan {
+  id            Int            @id @default(autoincrement())
+  nama          String
+  jenis         String
+  deskripsi     String?        @db.Text
+  harga_per_jam Int
+  kapasitas     Int
+  status        StatusLapangan @default(TERSEDIA)
+  image         String?        // ← tambahan baru
+  createdAt     DateTime       @default(now())
+  reservasis    Reservasi[]
+
+  @@map("lapangan")
+}
+
+// ============ RESERVASI ============
+model Reservasi {
+  id            Int             @id @default(autoincrement())
+  userId        Int
+  lapanganId    Int
+  nama_pemesan  String
+  no_hp         String
+  tanggal       DateTime        @db.Date
+  jam_mulai     String
+  jam_selesai   String
+  durasi        Int
+  total_harga   Int
+  dp            Int             @default(0)
+  status        StatusReservasi @default(PENDING)
+  catatan       String?
+  createdAt     DateTime        @default(now())
+
+  user       User       @relation(fields: [userId], references: [id])
+  lapangan   Lapangan   @relation(fields: [lapanganId], references: [id])
+  pembayaran Pembayaran?
+
+  @@map("reservasi")
+}
+
+// ============ HARGA WAKTU ============
+model HargaWaktu {
+  id         Int     @id @default(autoincrement())
+  namaWaktu  String
+  jamMulai   Int
+  jamSelesai Int
+  multiplier Float
+  keterangan String?
+
+  @@map("harga_waktu")
+}
+
+// ============ MEMBER ============
+model Member {
+  id            Int          @id @default(autoincrement())
+  userId        Int          @unique
+  nomorMember   String       @unique
+  tanggalDaftar DateTime     @default(now())
+  statusMember  StatusMember @default(AKTIF)
+  totalBooking  Int          @default(0)
+  catatan       String?      @db.Text
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@map("member")
+}
+
+// ============ PEMBAYARAN ============
+model Pembayaran {
+  id               Int              @id @default(autoincrement())
+  reservasiId      Int              @unique
+  metodePembayaran MetodePembayaran
+  jumlahBayar      Decimal          @db.Decimal(10, 2)
+  buktiPembayaran  String?
+  statusPembayaran StatusPembayaran @default(MENUNGGU)
+
+  namaBank      String?
+  nomorRekening String?
+  namaPengirim  String?
+
+  namaEwallet  String?
+  nomorEwallet String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  reservasi Reservasi @relation(fields: [reservasiId], references: [id])
+
+  @@map("pembayaran")
+}
+
+// ============ ENUMS ============
+enum Role {
+  USER
+  ADMIN
+}
+
+enum StatusLapangan {
+  TERSEDIA
+  TIDAK_TERSEDIA
+}
+
+enum StatusReservasi {
+  PENDING
+  KONFIRMASI
+  SELESAI
+  BATAL
+}
+
+enum StatusMember {
+  AKTIF
+  NONAKTIF
+}
+
+enum MetodePembayaran {
+  TRANSFER_BANK
+  EWALLET
+  TUNAI
+}
+
+enum StatusPembayaran {
+  MENUNGGU
+  VERIFIED
+  DITOLAK
+}
